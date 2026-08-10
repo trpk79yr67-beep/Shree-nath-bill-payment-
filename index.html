@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Card Bill Manager</title>
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Card Bill">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--ink:#142033;--muted:#64748b;--line:#e5eaf1;--primary:#0f172a;--blue:#2563eb;--green:#15803d;--red:#dc2626;--amber:#b45309}
+*{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select{font:inherit} button{cursor:pointer}
+.header{background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:28px 18px 20px;position:sticky;top:0;z-index:5}
+.header h1{margin:0;font-size:27px}.header p{margin:6px 0 0;color:#cbd5e1}
+.nav{display:flex;gap:8px;overflow:auto;padding:12px 14px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:91px;z-index:4}
+.nav button{border:0;background:#eef2f7;color:#1264d8;padding:12px 15px;border-radius:13px;white-space:nowrap;font-weight:700}.nav button.active{background:var(--primary);color:#fff}
+main{max-width:1100px;margin:auto;padding:18px 14px 80px}.title-row{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:6px 0 16px}.title-row h2{margin:0;font-size:29px}
+.btn{border:0;border-radius:12px;padding:11px 14px;font-weight:750;background:var(--primary);color:#fff}.btn.blue{background:var(--blue)}.btn.light{background:#eef2f7;color:var(--ink)}.btn.red{background:#fee2e2;color:#991b1b}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.grid3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.stat,.card,.customer,.carditem{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 4px 18px rgba(15,23,42,.05)}
+.stat{padding:18px}.stat .label{color:var(--muted);font-size:14px}.stat .value{font-size:24px;font-weight:800;margin-top:7px}
+.card{padding:16px;margin-bottom:12px}.section-title{font-size:18px;font-weight:800;margin:4px 0 12px}
+.customer{overflow:hidden;margin-bottom:12px}.customer-head{padding:16px;display:flex;align-items:center;justify-content:space-between;gap:10px}.customer-name{font-size:19px;font-weight:800}.customer-meta{color:var(--muted);font-size:13px;margin-top:4px}.cards-wrap{padding:0 12px 12px;background:#fafcff}.carditem{padding:13px;margin-top:10px}.cardtop{display:flex;justify-content:space-between;gap:8px}.bank{font-weight:800}.small{font-size:12px;color:var(--muted)}.pill{display:inline-flex;padding:4px 8px;border-radius:999px;background:#eaf2ff;color:#1d4ed8;font-size:11px;font-weight:750}
+.rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.rowbox{background:#f8fafc;border-radius:10px;padding:9px}.rowbox b{display:block;margin-top:2px}.green{color:var(--green)}.redtxt{color:var(--red)}.amber{color:var(--amber)}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);font-size:13px}th{color:var(--muted)}
+.empty{text-align:center;color:var(--muted);padding:28px 10px}
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;align-items:flex-end;z-index:20}.overlay.show{display:flex}.sheet{background:#fff;width:100%;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:18px}.sheet h3{margin:0 0 14px}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.field{display:flex;flex-direction:column;gap:5px}.field.full{grid-column:1/-1}.field label{font-size:12px;color:var(--muted);font-weight:700}.field input,.field select{border:1px solid #d9e0ea;border-radius:11px;padding:11px;background:#fff}.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:15px;position:sticky;bottom:0;background:#fff;padding-top:10px}
+.notice{padding:12px;border-radius:12px;background:#eff6ff;color:#1e40af;font-size:13px;margin-bottom:12px}
+.kpi{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.kpi:last-child{border-bottom:0}
+.footer-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+@media(min-width:760px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.rows{grid-template-columns:repeat(4,minmax(0,1fr))}.overlay{align-items:center;justify-content:center}.sheet{max-width:760px;border-radius:22px}}
+</style>
+</head>
+<body>
+<header class="header">
+  <h1>Card Bill Manager</h1>
+  <p>Customers • Cards • Statements • Bills • Profit</p>
+</header>
+<nav class="nav" id="nav"></nav>
+<main id="app"></main>
+
+<div class="overlay" id="modal">
+ <div class="sheet">
+  <div id="modalBody"></div>
+ </div>
+</div>
+
+<script>
+const KEY='cbm_v2_data';
+const defaultData={customers:[],cards:[],transactions:[],bills:[]};
+let data=JSON.parse(localStorage.getItem(KEY)||'null')||defaultData;
+let tab='dashboard';
+
+const money=n=>'₹'+Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2});
+const num=v=>Number(v)||0;
+const dateFmt=v=>v?new Date(v+'T00:00:00').toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'-';
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+function save(){localStorage.setItem(KEY,JSON.stringify(data)); render();}
+function customer(id){return data.customers.find(x=>x.id===id)}
+function card(id){return data.cards.find(x=>x.id===id)}
+function txIncome(t){return num(t.amount)*num(t.incomeRate)/100}
+function txCharges(t){return num(t.amount)*num(t.costRate)/100}
+function txProfit(t){return txIncome(t)-txCharges(t)}
+function cardOutstanding(c){
+  // Current statement balance = previous statement unpaid + new statement spend - payments.
+  const related=data.transactions.filter(t=>t.cardId===c.id);
+  const spend=related.filter(t=>t.kind==='spend').reduce((a,t)=>a+num(t.amount),0);
+  const paid=related.filter(t=>t.kind==='payment').reduce((a,t)=>a+num(t.amount),0);
+  return Math.max(0,num(c.openingOutstanding)+spend-paid);
+}
+function nextStatement(c){
+  // Expected next statement = current outstanding at statement date.
+  return cardOutstanding(c);
+}
+function availableLimit(c){return Math.max(0,num(c.limit)-cardOutstanding(c))}
+function daysUntil(v){if(!v)return null;return Math.ceil((new Date(v+'T00:00:00')-new Date())/86400000)}
+function nav(){
+ const items=[['dashboard','Dashboard'],['customers','Customers & Cards'],['transactions','Transactions'],['bills','Bills & Due'],['profit','Profit']];
+ document.getElementById('nav').innerHTML=items.map(([id,l])=>`<button class="${tab===id?'active':''}" onclick="tab='${id}';render()">${l}</button>`).join('');
+}
+function render(){nav();document.getElementById('app').innerHTML=({dashboard,customers,transactions,bills,profit}[tab])();}
+
+function dashboard(){
+ const income=data.transactions.reduce((a,t)=>a+txIncome(t),0);
+ const charges=data.transactions.reduce((a,t)=>a+txCharges(t),0);
+ const profit=income-charges;
+ const pending=data.bills.reduce((a,b)=>a+Math.max(0,num(b.amount)-num(b.paid)),0);
+ const due=data.bills.filter(b=>num(b.amount)>num(b.paid)).sort((a,b)=>new Date(a.due)-new Date(b.due)).slice(0,5);
+ return `<div class="title-row"><h2>Dashboard</h2><button class="btn blue" onclick="openCustomer()">+ Customer</button></div>
+ <div class="grid">
+  <div class="stat"><div class="label">Customers</div><div class="value">${data.customers.length}</div></div>
+  <div class="stat"><div class="label">Total Cards</div><div class="value">${data.cards.length}</div></div>
+  <div class="stat"><div class="label">Total Income</div><div class="value">${money(income)}</div></div>
+  <div class="stat"><div class="label">Net Profit</div><div class="value green">${money(profit)}</div></div>
+  <div class="stat"><div class="label">Bills Pending</div><div class="value">${money(pending)}</div></div>
+  <div class="stat"><div class="label">Card Outstanding</div><div class="value">${money(data.cards.reduce((a,c)=>a+cardOutstanding(c),0))}</div></div>
+  <div class="stat"><div class="label">Available Limit</div><div class="value">${money(data.cards.reduce((a,c)=>a+availableLimit(c),0))}</div></div>
+  <div class="stat"><div class="label">Transaction Volume</div><div class="value">${money(data.transactions.reduce((a,t)=>a+num(t.amount),0))}</div></div>
+ </div>
+ <div class="card"><div class="section-title">Upcoming Bills</div>${due.length?due.map(b=>{
+   const left=Math.max(0,num(b.amount)-num(b.paid)); const d=daysUntil(b.due);
+   return `<div class="kpi"><div><b>${esc(customer(b.customerId)?.name||'Unknown')}</b><div class="small">Due ${dateFmt(b.due)} ${d!==null?(d<0?'• overdue':`• ${d} days`):''}</div></div><b>${money(left)}</b></div>`
+ }).join(''):'<div class="empty">No pending bills</div>'}</div>
+ <div class="card"><div class="section-title">Quick backup</div><div class="footer-actions"><button class="btn light" onclick="exportData()">Export Backup</button><button class="btn light" onclick="importData()">Import Backup</button></div></div>`;
+}
+
+function customers(){
+ return `<div class="title-row"><h2>Customers & Cards</h2><button class="btn blue" onclick="openCustomer()">+ Customer</button></div>
+ <div class="notice">एक customer के जितने भी cards हैं, सभी एक ही section में दिखेंगे। हर card में limit, outstanding, available limit, statement date और due date रहेगा।</div>
+ ${data.customers.length?data.customers.map(c=>{
+   const cards=data.cards.filter(x=>x.customerId===c.id);
+   return `<div class="customer"><div class="customer-head"><div><div class="customer-name">${esc(c.name)}</div><div class="customer-meta">${esc(c.mobile||'')} ${c.note?'• '+esc(c.note):''}</div></div><div><button class="btn light" onclick="openCard('${c.id}')">+ Card</button> <button class="btn red" onclick="delCustomer('${c.id}')">Delete</button></div></div>
+   <div class="cards-wrap">${cards.length?cards.map(cardView).join(''):'<div class="empty">No cards added</div>'}</div></div>`
+ }).join(''):'<div class="card empty">अभी कोई customer नहीं है। ऊपर + Customer दबाकर शुरू करें।</div>'}`;
+}
+function cardView(c){
+ const out=cardOutstanding(c), avail=availableLimit(c), next=nextStatement(c);
+ const d=daysUntil(c.dueDate);
+ return `<div class="carditem">
+  <div class="cardtop"><div><div class="bank">${esc(c.bank)} <span class="pill">****${esc(c.last4)}</span></div><div class="small">${esc(c.type||'Credit Card')}</div></div><button class="btn light" onclick="openCard('${c.customerId}','${c.id}')">Edit</button></div>
+  <div class="rows">
+   <div class="rowbox"><span class="small">Total Limit</span><b>${money(c.limit)}</b></div>
+   <div class="rowbox"><span class="small">Current Outstanding</span><b>${money(out)}</b></div>
+   <div class="rowbox"><span class="small">Available Limit</span><b class="green">${money(avail)}</b></div>
+   <div class="rowbox"><span class="small">Expected Next Statement</span><b>${money(next)}</b></div>
+  </div>
+  <div class="rows">
+   <div class="rowbox"><span class="small">Statement Date</span><b>${c.statementDate?dateFmt(c.statementDate):'-'}</b></div>
+   <div class="rowbox"><span class="small">Due Date</span><b>${c.dueDate?dateFmt(c.dueDate):'-'} ${d!==null?(d<0?'<span class="redtxt">Overdue</span>':`<span class="small">(${d}d)</span>`):''}</b></div>
+   <div class="rowbox"><span class="small">Opening Outstanding</span><b>${money(c.openingOutstanding)}</b></div>
+   <div class="rowbox"><span class="small">Card Action</span><b><button class="btn red" onclick="delCard('${c.id}')">Delete</button></b></div>
+  </div>
+ </div>`;
+}
+
+function transactions(){
+ return `<div class="title-row"><h2>Transactions</h2><button class="btn blue" onclick="openTx()">+ Transaction</button></div>
+ <div class="card"><div class="section-title">Statement calculation</div><div class="notice">Example: अगर current statement में ₹5,00,000 है और आपने ₹4,00,000 का नया spend/withdrawal किया, तो payment और नए spends के आधार पर Expected Next Statement अपने आप निकलेगा।</div>
+ <table><thead><tr><th>Date</th><th>Customer / Card</th><th>Type</th><th>Amount</th><th>Profit</th><th></th></tr></thead><tbody>
+ ${data.transactions.length?data.transactions.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t=>`<tr><td>${dateFmt(t.date)}</td><td>${esc(customer(t.customerId)?.name||'')}<br><span class="small">${esc(card(t.cardId)?.bank||'')} ****${esc(card(t.cardId)?.last4||'')}</span></td><td>${esc(t.kind)}</td><td>${money(t.amount)}</td><td class="green">${money(txProfit(t))}</td><td><button class="btn red" onclick="delTx('${t.id}')">×</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty">No transactions yet</td></tr>'}
+ </tbody></table></div>`;
+}
+
+function bills(){
+ return `<div class="title-row"><h2>Bills & Due</h2><button class="btn blue" onclick="openBill()">+ Bill</button></div>
+ <div class="card"><table><thead><tr><th>Customer</th><th>Card</th><th>Bill</th><th>Paid</th><th>Pending</th><th>Due</th><th></th></tr></thead><tbody>
+ ${data.bills.length?data.bills.slice().sort((a,b)=>new Date(a.due)-new Date(b.due)).map(b=>`<tr><td>${esc(customer(b.customerId)?.name||'')}</td><td>****${esc(card(b.cardId)?.last4||'')}</td><td>${money(b.amount)}</td><td>${money(b.paid)}</td><td class="${b.amount-b.paid>0?'amber':''}">${money(Math.max(0,b.amount-b.paid))}</td><td>${dateFmt(b.due)}</td><td><button class="btn red" onclick="delBill('${b.id}')">×</button></td></tr>`).join(''):'<tr><td colspan="7" class="empty">No bills yet</td></tr>'}
+ </tbody></table></div>`;
+}
+
+function profit(){
+ const income=data.transactions.reduce((a,t)=>a+txIncome(t),0), charges=data.transactions.reduce((a,t)=>a+txCharges(t),0);
+ return `<div class="title-row"><h2>Profit & Income</h2></div>
+ <div class="grid"><div class="stat"><div class="label">Total Income</div><div class="value">${money(income)}</div></div><div class="stat"><div class="label">Your Charges</div><div class="value">${money(charges)}</div></div><div class="stat"><div class="label">NET PROFIT</div><div class="value green">${money(income-charges)}</div></div><div class="stat"><div class="label">Volume</div><div class="value">${money(data.transactions.reduce((a,t)=>a+num(t.amount),0))}</div></div></div>
+ <div class="card"><div class="section-title">Profit by transaction</div><table><thead><tr><th>Customer</th><th>Amount</th><th>Income %</th><th>Cost %</th><th>Net Profit</th></tr></thead><tbody>${data.transactions.map(t=>`<tr><td>${esc(customer(t.customerId)?.name||'')}</td><td>${money(t.amount)}</td><td>${num(t.incomeRate)}%</td><td>${num(t.costRate)}%</td><td class="green">${money(txProfit(t))}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">No data</td></tr>'}</tbody></table></div>`;
+}
+
+function showModal(body){document.getElementById('modalBody').innerHTML=body;document.getElementById('modal').classList.add('show')}
+function closeModal(){document.getElementById('modal').classList.remove('show')}
+document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()})
+
+function openCustomer(){
+ showModal(`<h3>Add Customer</h3><div class="formgrid">
+ <div class="field"><label>Name</label><input id="f_name" placeholder="Ram"></div>
+ <div class="field"><label>Mobile</label><input id="f_mobile" inputmode="tel"></div>
+ <div class="field full"><label>Note</label><input id="f_note" placeholder="Optional"></div>
+ </div><div class="actions"><button class="btn light" onclick="closeModal()">Cancel</button><button class="btn blue" onclick="addCustomer()">Save Customer</button></div>`);
+}
+function addCustomer(){data.customers.push({id:crypto.randomUUID(),name:document.getElementById('f_name').value.trim(),mobile:document.getElementById('f_mobile').value.trim(),note:document.getElementById('f_note').value.trim()});save();closeModal()}
+function delCustomer(id){if(confirm('Delete customer and all related cards?')){data.customers=data.customers.filter(x=>x.id!==id);data.cards=data.cards.filter(x=>x.customerId!==id);data.transactions=data.transactions.filter(x=>x.customerId!==id);data.bills=data.bills.filter(x=>x.customerId!==id);save()}}
+
+function openCard(customerId,editId){
+ const c=editId?card(editId):null;
+ const cs=data.customers.map(x=>`<option value="${x.id}" ${x.id===(c?.customerId||customerId)?'selected':''}>${esc(x.name)}</option>`).join('');
+ showModal(`<h3>${c?'Edit':'Add'} Card</h3><div class="formgrid">
+ <div class="field"><label>Customer</label><select id="c_customer">${cs}</select></div>
+ <div class="field"><label>Bank / Card Name</label><input id="c_bank" value="${esc(c?.bank||'')}" placeholder="Axis Atlas"></div>
+ <div class="field"><label>Last 4 Digits</label><input id="c_last4" inputmode="numeric" maxlength="4" value="${esc(c?.last4||'')}"></div>
+ <div class="field"><label>Card Type</label><input id="c_type" value="${esc(c?.type||'Credit Card')}"></div>
+ <div class="field"><label>Total Credit Limit</label><input id="c_limit" inputmode="decimal" value="${c?.limit??''}" placeholder="500000"></div>
+ <div class="field"><label>Opening Outstanding / Current Bill</label><input id="c_open" inputmode="decimal" value="${c?.openingOutstanding??''}" placeholder="500000"></div>
+ <div class="field"><label>Statement Date (हर month)</label><input id="c_statement" type="date" value="${c?.statementDate||''}"></div>
+ <div class="field"><label>Due Date</label><input id="c_due" type="date" value="${c?.dueDate||''}"></div>
+ </div>
+ <div class="notice">Opening Outstanding में अभी का bill डालें। बाद में Transaction में Spend/Withdrawal और Payment डालेंगे, जिससे Current Outstanding और Expected Next Statement automatically calculate होंगे।</div>
+ <div class="actions"><button class="btn light" onclick="closeModal()">Cancel</button><button class="btn blue" onclick="saveCard('${editId||''}')">Save Card</button></div>`);
+}
+function saveCard(id){
+ const obj={id:id||crypto.randomUUID(),customerId:document.getElementById('c_customer').value,bank:document.getElementById('c_bank').value.trim(),last4:document.getElementById('c_last4').value.trim().slice(0,4),type:document.getElementById('c_type').value.trim(),limit:num(document.getElementById('c_limit').value),openingOutstanding:num(document.getElementById('c_open').value),statementDate:document.getElementById('c_statement').value,dueDate:document.getElementById('c_due').value};
+ if(id)data.cards=data.cards.map(x=>x.id===id?obj:x);else data.cards.push(obj);save();closeModal();
+}
+function delCard(id){if(confirm('Delete this card and its transactions?')){data.cards=data.cards.filter(x=>x.id!==id);data.transactions=data.transactions.filter(x=>x.cardId!==id);data.bills=data.bills.filter(x=>x.cardId!==id);save()}}
+
+function openTx(){
+ if(!data.customers.length||!data.cards.length){alert('पहले Customer और Card add करें।');return}
+ const options=data.cards.map(c=>`<option value="${c.id}">${esc(customer(c.customerId)?.name||'')} — ${esc(c.bank)} ****${esc(c.last4)}</option>`).join('');
+ showModal(`<h3>Add Transaction</h3><div class="formgrid">
+ <div class="field"><label>Date</label><input id="t_date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+ <div class="field"><label>Card</label><select id="t_card">${options}</select></div>
+ <div class="field"><label>Type</label><select id="t_kind"><option value="spend">Spend / Withdrawal</option><option value="payment">Bill Payment</option></select></div>
+ <div class="field"><label>Amount</label><input id="t_amount" inputmode="decimal" placeholder="400000"></div>
+ <div class="field"><label>Your Income %</label><input id="t_income" inputmode="decimal" value="3"></div>
+ <div class="field"><label>Your Cost %</label><input id="t_cost" inputmode="decimal" value="1.7"></div>
+ <div class="field full"><label>Note</label><input id="t_note" placeholder="Cash given / other card bill paid"></div>
+ </div>
+ <div class="notice">Payment reduces the card's outstanding. Spend/Withdrawal increases it. This gives an estimated next statement from the records you enter.</div>
+ <div class="actions"><button class="btn light" onclick="closeModal()">Cancel</button><button class="btn blue" onclick="saveTx()">Save Transaction</button></div>`);
+}
+function saveTx(){
+ const cid=document.getElementById('t_card').value,c=card(cid), cust=c?.customerId;
+ data.transactions.push({id:crypto.randomUUID(),date:document.getElementById('t_date').value,customerId:cust,cardId:cid,kind:document.getElementById('t_kind').value,amount:num(document.getElementById('t_amount').value),incomeRate:num(document.getElementById('t_income').value),costRate:num(document.getElementById('t_cost').value),note:document.getElementById('t_note').value});save();closeModal()
+}
+function delTx(id){data.transactions=data.transactions.filter(x=>x.id!==id);save()}
+
+function openBill(){
+ if(!data.customers.length||!data.cards.length){alert('पहले Customer और Card add करें।');return}
+ const options=data.cards.map(c=>`<option value="${c.id}">${esc(customer(c.customerId)?.name||'')} — ${esc(c.bank)} ****${esc(c.last4)}</option>`).join('');
+ showModal(`<h3>Add Bill</h3><div class="formgrid">
+ <div class="field full"><label>Card</label><select id="b_card">${options}</select></div>
+ <div class="field"><label>Bill Amount</label><input id="b_amount" inputmode="decimal"></div>
+ <div class="field"><label>Paid Amount</label><input id="b_paid" inputmode="decimal" value="0"></div>
+ <div class="field"><label>Due Date</label><input id="b_due" type="date"></div>
+ </div><div class="actions"><button class="btn light" onclick="closeModal()">Cancel</button><button class="btn blue" onclick="saveBill()">Save Bill</button></div>`);
+}
+function saveBill(){
+ const cid=document.getElementById('b_card').value,c=card(cid);
+ data.bills.push({id:crypto.randomUUID(),customerId:c.customerId,cardId:cid,amount:num(document.getElementById('b_amount').value),paid:num(document.getElementById('b_paid').value),due:document.getElementById('b_due').value});save();closeModal()
+}
+function delBill(id){data.bills=data.bills.filter(x=>x.id!==id);save()}
+
+function exportData(){
+ const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);a.download='card-bill-backup.json';a.click();URL.revokeObjectURL(a.href)
+}
+function importData(){
+ const input=document.createElement('input');input.type='file';input.accept='.json,application/json';
+ input.onchange=()=>{const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{data=JSON.parse(r.result);save();alert('Backup restored')}catch(e){alert('Invalid backup')}};r.readAsText(f)};input.click()
+}
+render();
+if('serviceWorker' in navigator) addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));
+</script>
+</body></html>
