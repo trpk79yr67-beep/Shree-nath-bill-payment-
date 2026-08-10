@@ -2,11 +2,9 @@
   "name": "Card Bill Manager",
   "short_name": "Card Bill",
   "start_url": "./",
-  "scope": "./",
   "display": "standalone",
-  "background_color": "#f4f7fb",
-  "theme_color": "#0f172a",
-  "orientation": "portrait",
+  "theme_color": "#0b1220",
+  "background_color": "#f4f6f9",
   "icons": [
     {
       "src": "assets/icon-180.png",
@@ -16,14 +14,12 @@
     {
       "src": "assets/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "assets/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
   ]
 }
